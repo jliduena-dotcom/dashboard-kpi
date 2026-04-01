@@ -1,0 +1,116 @@
+/* =============================== */
+/* CONTENEDOR CON SCROLL */
+/* =============================== */
+.tabla-contenedor {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #ccc;
+    background-color: #f5f7fa;
+}
+
+/* ================================================= */
+/* TABLA BASE */
+/* ================================================= */
+#tablaExcel {
+    border-collapse: collapse;
+    width: max-content;
+    background-color: white;
+}
+
+/* ================================================= */
+/* CELDAS GENERALES */
+/* ================================================= */
+#tablaExcel th,
+#tablaExcel td {
+    border: 1px solid #d0d0d0;
+    padding: 6px 10px;
+    white-space: nowrap;
+    font-size: 12px;
+}
+
+/* ================================================= */
+/* ENCABEZADOS (ROJOS CON TEXTO BLANCO) */
+/* ================================================= */
+#tablaExcel th {
+    background-color: #c62828; /* rojo */
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+}
+
+/* ================================================= */
+/* /* COLUMNAS FIJAS (1 A 3) */
+#tablaExcel th:nth-child(-n+3),
+#tablaExcel td:nth-child(-n+3) {
+    position: sticky;
+    background-color: #c62828; /* rojo */
+    color: white;              /* ✅ TEXTO BLANCO */
+    z-index: 4;
+    font-weight: bold;
+}
+
+/* ================================================= */
+/* POSICIÓN ACUMULADA CORRECTA */
+/* ================================================= */
+#tablaExcel th:nth-child(1),
+#tablaExcel td:nth-child(1) { left: 0px; }
+
+#tablaExcel th:nth-child(2),
+#tablaExcel td:nth-child(2) { left: 0px; }
+
+#tablaExcel th:nth-child(3),
+#tablaExcel td:nth-child(3) { left: 0px; }
+
+#tablaExcel th:nth-child(4),
+#tablaExcel td:nth-child(4) { left: 0px; }
+
+#tablaExcel th:nth-child(5),
+#tablaExcel td:nth-child(5) { left: 0px; }
+
+#tablaExcel th:nth-child(6),
+#tablaExcel td:nth-child(6) { left: 0px; }
+
+/* ================================================= */
+/* SOMBRA DE CORTE (EVITA ENTRELACE VISUAL) */
+/* ================================================= */
+#tablaExcel th:nth-child(6),
+#tablaExcel td:nth-child(6) {
+    box-shadow: 6px 0 8px -2px rgba(0,0,0,0.25);
+}
+
+/* ================================================= */
+/* COLUMNAS NO FIJAS (DEJAN PASAR EL SCROLL) */
+/* ================================================= */
+#tablaExcel td:not(:nth-child(-n+6)) {
+    background-color: white;
+    z-index: 1;
+}
+
+header {
+    background-color: #002b5c; /* azul corporativo */
+    color: white;
+    padding: 20px;
+    text-align: center; /* CENTRADO */
+}
+
+header h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: bold;
+}
+
+header p {
+    margin-top: 5px;
+    font-size: 13px;
+    opacity: 0.9;
+}
+
+header h2 {
+    background-color: #c62828; /* rojo */
+    color: white;
+    padding: 20px;
+    text-align: center; /* CENTRADO */
+}

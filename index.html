@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard KPI</title>
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Librerías -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FKC4VRYTZX"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-FKC4VRYTZX', { debug_mode: true });
+    </script>
+</head>
+
+<section id="contador">
+    👁️ Visitas a la página: <span id="visitas">0</span>
+</section>
+
+<body>
+
+<header>
+    <h1>Indicadores de Gestión COSTA OTC</h1>
+    <p>Reporte automático</p>
+    <h2 class="titulo-tabla">Detalle de Indicadores KPI CCOT</h2>
+</header>
+
+<section>
+    
+    <div class="tabla-contenedor">
+    <table id="tablaExcel"></table>
+</div>
+
+</section>
+
+<section>
+    <canvas id="graficoCumplimiento"></canvas>
+</section>
+
+<script src="script.js"></script>
+
+</body>
+</html>
