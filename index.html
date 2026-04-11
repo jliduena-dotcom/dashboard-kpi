@@ -1,49 +1,591 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Dashboard KPI</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard KPI CCOT</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: "Segoe UI", Arial, sans-serif; background: #f0f2f5; color: #222; min-height: 100vh; }
 
-    <!-- Librerías -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    header { background: linear-gradient(135deg, #002b5c 0%, #004b9b 100%); color: white; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
+    .header-top { display: flex; justify-content: space-between; align-items: center; padding: 14px 28px 8px; flex-wrap: wrap; gap: 8px; }
+    .header-brand h1 { font-size: 20px; font-weight: 700; }
+    .header-brand p { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+    .header-meta { font-size: 13px; opacity: 0.85; }
 
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FKC4VRYTZX"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-FKC4VRYTZX', { debug_mode: true });
-    </script>
+    .nav-tabs { display: flex; gap: 2px; padding: 0 20px; background: rgba(0,0,0,0.2); flex-wrap: wrap; }
+    .nav-tab { background: transparent; color: rgba(255,255,255,0.7); border: none; padding: 10px 18px; font-size: 13px; font-weight: 600; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; white-space: nowrap; }
+    .nav-tab:hover { color: white; background: rgba(255,255,255,0.08); }
+    .nav-tab.active { color: white; border-bottom-color: #e53935; background: rgba(255,255,255,0.1); }
+
+    .filtros-barra { display: flex; gap: 20px; align-items: center; padding: 12px 28px; background: white; border-bottom: 2px solid #e0e0e0; flex-wrap: wrap; }
+    .filtro-grupo { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #444; }
+    .filtro-grupo select { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; background: white; cursor: pointer; min-width: 160px; }
+    .filtro-grupo select:focus { outline: none; border-color: #004b9b; }
+
+    /* Loading */
+    #loading { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 20px; gap: 16px; }
+    .spinner { width: 48px; height: 48px; border: 5px solid #e0e0e0; border-top-color: #004b9b; border-radius: 50%; animation: spin 0.9s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading p { color: #555; font-size: 14px; }
+    #error-msg { display: none; background: #ffcdd2; color: #7f0000; padding: 20px 28px; border-radius: 8px; margin: 20px 28px; font-size: 14px; }
+
+    .tab-content { display: none; padding: 20px 28px; }
+    .tab-content.active { display: block; }
+    .seccion-titulo { background: linear-gradient(90deg, #002b5c, #004b9b); color: white; padding: 10px 20px; font-size: 14px; font-weight: 700; border-radius: 6px; margin: 20px 0 14px; }
+
+    .kpi-cards { display: flex; gap: 14px; flex-wrap: wrap; margin: 16px 0; }
+    .kpi-card { flex: 1; min-width: 130px; max-width: 190px; padding: 16px; border-radius: 12px; text-align: center; color: white; box-shadow: 0 3px 10px rgba(0,0,0,0.15); }
+    .kpi-icon { font-size: 24px; margin-bottom: 6px; }
+    .kpi-title { font-size: 10px; opacity: 0.9; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .kpi-value { font-size: 36px; font-weight: 800; }
+    .kpi-up         { background: linear-gradient(135deg, #2e7d32, #43a047); }
+    .kpi-warn       { background: linear-gradient(135deg, #e65100, #fb8c00); }
+    .kpi-down       { background: linear-gradient(135deg, #b71c1c, #e53935); }
+    .kpi-trend-up   { background: linear-gradient(135deg, #1565c0, #1e88e5); }
+    .kpi-trend-down { background: linear-gradient(135deg, #4a148c, #7b1fa2); }
+
+    .chart-box { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    .chart-box canvas { max-height: 320px; }
+
+    .persona-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    .persona-tab { padding: 8px 18px; border: 2px solid #002b5c; background: white; color: #002b5c; border-radius: 20px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    .persona-tab:hover, .persona-tab.active { background: #002b5c; color: white; }
+    .persona-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    .persona-card h3 { font-size: 16px; font-weight: 700; color: #002b5c; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 2px solid #e0e0e0; }
+
+    .mini-tabla { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 16px; display: block; overflow-x: auto; }
+    .mini-tabla th { background: #002b5c; color: white; padding: 8px 10px; text-align: center; font-weight: 600; white-space: nowrap; }
+    .mini-tabla td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; text-align: center; white-space: nowrap; }
+    .mini-tabla tr:hover td { background: #f5f8ff; }
+
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; color: white; }
+    .badge-verde    { background: #2e7d32; }
+    .badge-amarillo { background: #e65100; }
+    .badge-rojo     { background: #c62828; }
+    .variacion-up   { color: #2e7d32; font-weight: 700; }
+    .variacion-down { color: #c62828; font-weight: 700; }
+    .variacion-eq   { color: #888; }
+
+    .tabla-contenedor { width: 100%; overflow-x: auto; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); background: white; }
+    #tablaExcel { border-collapse: collapse; width: max-content; min-width: 100%; font-size: 12px; }
+    #tablaExcel th { background: #002b5c; color: white; padding: 9px 12px; text-align: center; font-weight: 700; white-space: nowrap; position: sticky; top: 0; z-index: 5; border: 1px solid #1a3a6e; }
+    #tablaExcel td { padding: 7px 12px; border: 1px solid #e8eaf0; white-space: nowrap; text-align: center; }
+    #tablaExcel tr:nth-child(even) td { background: #f7f9fc; }
+    #tablaExcel tr:hover td { background: #edf1fb; }
+    .celda-verde    { background: #c8e6c9 !important; color: #1b5e20; font-weight: 700; }
+    .celda-amarillo { background: #fff3cd !important; color: #7c4700; font-weight: 700; }
+    .celda-rojo     { background: #ffcdd2 !important; color: #7f0000; font-weight: 700; }
+
+    @media (max-width: 700px) {
+      .header-top { flex-direction: column; }
+      .kpi-card { min-width: 120px; }
+      .tab-content { padding: 12px; }
+      .filtros-barra { padding: 10px 12px; }
+    }
+  </style>
 </head>
-
-<section id="contador">
-    👁️ Visitas a la página: <span id="visitas">0</span>
-</section>
-
 <body>
 
 <header>
-    <h1>Indicadores de Gestión COSTA OTC</h1>
-    <p>Reporte automático</p>
-    <h2 class="titulo-tabla">Detalle de Indicadores KPI CCOT</h2>
+  <div class="header-top">
+    <div class="header-brand">
+      <h1>📊 Indicadores de Gestión COSTA OTC</h1>
+      <p>Reporte automático de desempeño KPI</p>
+    </div>
+    <div class="header-meta">👁️ Visitas: <strong id="visitas">0</strong></div>
+  </div>
+  <nav class="nav-tabs">
+    <button class="nav-tab active" data-tab="resumen">📋 Resumen General</button>
+    <button class="nav-tab" data-tab="porPersona">👤 Por Persona</button>
+    <button class="nav-tab" data-tab="porIndicador">📈 Por Indicador</button>
+    <button class="nav-tab" data-tab="tabla">🗂️ Tabla Completa</button>
+  </nav>
 </header>
 
-<section>
-    
-    <div class="tabla-contenedor">
-    <table id="tablaExcel"></table>
+<div class="filtros-barra">
+  <div class="filtro-grupo">
+    <label>📅 Mes:</label>
+    <select id="mesSeleccionado"></select>
+  </div>
+  <div class="filtro-grupo">
+    <label>👤 Usuario:</label>
+    <select id="usuarioFiltro"><option value="TODOS">Todos</option></select>
+  </div>
 </div>
 
-</section>
+<!-- Loading -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Cargando datos desde Excel...</p>
+</div>
+<div id="error-msg">
+  ❌ No se pudo cargar el archivo Excel. Verifica que <strong>BASE DE KPI CCOT.xlsx</strong> esté en la raíz del repositorio de GitHub.
+</div>
 
-<section>
-    <canvas id="graficoCumplimiento"></canvas>
-</section>
+<!-- RESUMEN -->
+<div id="tab-resumen" class="tab-content">
+  <h2 class="seccion-titulo">Resumen del mes seleccionado</h2>
+  <div class="kpi-cards">
+    <div class="kpi-card kpi-up"><div class="kpi-icon">✅</div><div class="kpi-title">Cumplen Meta (≥100%)</div><div class="kpi-value" id="kpi-cumplen">0</div></div>
+    <div class="kpi-card kpi-warn"><div class="kpi-icon">⚠️</div><div class="kpi-title">En Riesgo (90–99%)</div><div class="kpi-value" id="kpi-riesgo">0</div></div>
+    <div class="kpi-card kpi-down"><div class="kpi-icon">❌</div><div class="kpi-title">No Cumplen (&lt;90%)</div><div class="kpi-value" id="kpi-nocumplen">0</div></div>
+    <div class="kpi-card kpi-trend-up"><div class="kpi-icon">📈</div><div class="kpi-title">Mejoran vs mes ant.</div><div class="kpi-value" id="kpi-mejoran">0</div></div>
+    <div class="kpi-card kpi-trend-down"><div class="kpi-icon">📉</div><div class="kpi-title">Desmejoran vs mes ant.</div><div class="kpi-value" id="kpi-desmejoran">0</div></div>
+  </div>
+  <h2 class="seccion-titulo">Tendencia General del Equipo</h2>
+  <div class="chart-box"><canvas id="graficoTendenciaGeneral"></canvas></div>
+  <h2 class="seccion-titulo">Cumplimiento por Usuario — Mes actual vs anterior</h2>
+  <div class="chart-box"><canvas id="graficoBarraUsuarios"></canvas></div>
+</div>
 
-<script src="script.js"></script>
+<!-- POR PERSONA -->
+<div id="tab-porPersona" class="tab-content">
+  <h2 class="seccion-titulo">Seguimiento por Persona</h2>
+  <div class="persona-tabs" id="personaTabs"></div>
+  <div id="personaContenido"></div>
+</div>
 
+<!-- POR INDICADOR -->
+<div id="tab-porIndicador" class="tab-content">
+  <h2 class="seccion-titulo">Tendencia por Indicador</h2>
+  <div class="filtro-grupo" style="margin: 16px 0;">
+    <label>📌 Indicador:</label>
+    <select id="indicadorSeleccionado" style="min-width:320px;"></select>
+  </div>
+  <div class="chart-box"><canvas id="graficoTendenciaIndicador"></canvas></div>
+  <div class="tabla-contenedor" id="tablaIndicador" style="margin-top:16px;"></div>
+</div>
+
+<!-- TABLA -->
+<div id="tab-tabla" class="tab-content">
+  <h2 class="seccion-titulo">Tabla Completa de KPI</h2>
+  <div class="tabla-contenedor"><table id="tablaExcel"></table></div>
+</div>
+
+<script>
+// Visitas
+let v = parseInt(localStorage.getItem("kpiVisitas") || "0") + 1;
+localStorage.setItem("kpiVisitas", v);
+document.getElementById("visitas").textContent = v;
+
+// Charts
+let chartTendGen = null, chartBarra = null, chartInd = null;
+const chartPersonaMap = {};
+
+// ── CARGAR EXCEL DESDE GITHUB ──────────────────────────────
+fetch("BASE%20DE%20KPI%20CCOT.xlsx")
+  .then(r => {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.arrayBuffer();
+  })
+  .then(buf => {
+    const wb   = XLSX.read(buf, { type: "array" });
+    const ws   = wb.Sheets[wb.SheetNames[0]];
+    const json = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true })
+                   .filter(r => r.some(c => c !== null && c !== "" && c !== undefined));
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("tab-resumen").classList.add("active");
+    inicializar(json);
+  })
+  .catch(err => {
+    console.error("Error cargando Excel:", err);
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("error-msg").style.display = "block";
+  });
+
+// ── DETECTAR MESES ─────────────────────────────────────────
+function detectarMeses(headers) {
+  const meses = [];
+  for (let i = 0; i < headers.length; i++) {
+    const h = (headers[i] || "").toString().toUpperCase();
+    if (h.includes("REALIZADO")) {
+      const etiqueta = headers[i].toString().replace(/REALIZADO/i, "").trim() || ("Mes " + i);
+      let colCump = -1;
+      for (let j = i+1; j < Math.min(i+4, headers.length); j++) {
+        if ((headers[j]||"").toString().toUpperCase().includes("CUMPLIMIENTO")) { colCump = j; break; }
+      }
+      let colMeta = -1;
+      for (let j = i-1; j >= Math.max(0, i-3); j--) {
+        if ((headers[j]||"").toString().toUpperCase().includes("META")) { colMeta = j; break; }
+      }
+      meses.push({ etiqueta, colReal: i, colCump, colMeta });
+    }
+  }
+  return meses;
+}
+
+function obtenerUsuarios(data) {
+  const idx = data[0].indexOf("USUARIO");
+  const set = new Set();
+  for (let i = 1; i < data.length; i++) {
+    const u = data[i][idx];
+    if (u && u !== "-") set.add(u);
+  }
+  return [...set];
+}
+
+// ── INICIALIZAR ────────────────────────────────────────────
+function inicializar(data) {
+  const headers   = data[0];
+  const mesesInfo = detectarMeses(headers);
+  const usuarios  = obtenerUsuarios(data);
+
+  // Selector mes
+  const selMes = document.getElementById("mesSeleccionado");
+  selMes.innerHTML = "";
+  mesesInfo.forEach((m, i) => {
+    const o = document.createElement("option");
+    o.value = i; o.textContent = m.etiqueta;
+    selMes.appendChild(o);
+  });
+  // Seleccionar último mes con datos
+  let ultimoConDatos = mesesInfo.length - 1;
+  for (let i = mesesInfo.length - 1; i >= 0; i--) {
+    const col = mesesInfo[i].colCump !== -1 ? mesesInfo[i].colCump : mesesInfo[i].colReal;
+    const tieneData = data.slice(1).some(r => r[col] !== null && r[col] !== undefined && !isNaN(Number(r[col])));
+    if (tieneData) { ultimoConDatos = i; break; }
+  }
+  selMes.value = ultimoConDatos;
+
+  // Selector usuario
+  const selUsu = document.getElementById("usuarioFiltro");
+  selUsu.innerHTML = "<option value='TODOS'>Todos</option>";
+  usuarios.forEach(u => {
+    const o = document.createElement("option");
+    o.value = u; o.textContent = u;
+    selUsu.appendChild(o);
+  });
+
+  // Selector indicador
+  const idxNomb = headers.findIndex(h => h && h.toString().includes("Nombre"));
+  const selInd  = document.getElementById("indicadorSeleccionado");
+  selInd.innerHTML = "";
+  for (let i = 1; i < data.length; i++) {
+    const n = data[i][idxNomb];
+    if (n && n !== "-") {
+      const o = document.createElement("option");
+      o.value = n.toString().trim(); o.textContent = n.toString().trim();
+      selInd.appendChild(o);
+    }
+  }
+
+  construirPestañasPersona(data, mesesInfo, usuarios);
+  renderizarTodo(data, mesesInfo);
+  construirTablaCompleta(data, mesesInfo);
+
+  selMes.addEventListener("change", () => renderizarTodo(data, mesesInfo));
+  selUsu.addEventListener("change", () => renderizarTodo(data, mesesInfo));
+  selInd.addEventListener("change", () => {
+    renderGraficoIndicador(data, mesesInfo);
+    renderTablaIndicador(data, mesesInfo);
+  });
+}
+
+// ── RENDER PRINCIPAL ───────────────────────────────────────
+function renderizarTodo(data, mesesInfo) {
+  const idxMes    = parseInt(document.getElementById("mesSeleccionado").value);
+  const mes       = mesesInfo[idxMes];
+  const mesPrev   = idxMes > 0 ? mesesInfo[idxMes - 1] : null;
+  const headers   = data[0];
+  const idxUser   = headers.indexOf("USUARIO");
+  const usuFiltro = document.getElementById("usuarioFiltro").value;
+
+  const filas = data.slice(1).filter(r => {
+    const u = r[idxUser];
+    return u && u !== "-" && (usuFiltro === "TODOS" || u === usuFiltro);
+  });
+
+  // KPI cards
+  let cumplen=0, riesgo=0, noCumplen=0, mejoran=0, desmejoran=0;
+  filas.forEach(fila => {
+    const colC = mes.colCump !== -1 ? mes.colCump : mes.colReal;
+    const vv   = Number(fila[colC]);
+    if (isNaN(vv)) return;
+    const pct = vv * 100;
+    if (pct >= 100) cumplen++;
+    else if (pct >= 90) riesgo++;
+    else noCumplen++;
+    if (mesPrev) {
+      const colP = mesPrev.colCump !== -1 ? mesPrev.colCump : mesPrev.colReal;
+      const vP   = Number(fila[colP]);
+      if (!isNaN(vP)) { if (vv > vP) mejoran++; else if (vv < vP) desmejoran++; }
+    }
+  });
+  document.getElementById("kpi-cumplen").textContent    = cumplen;
+  document.getElementById("kpi-riesgo").textContent     = riesgo;
+  document.getElementById("kpi-nocumplen").textContent  = noCumplen;
+  document.getElementById("kpi-mejoran").textContent    = mejoran;
+  document.getElementById("kpi-desmejoran").textContent = desmejoran;
+
+  // Tendencia general
+  const etiq=[], promedios=[], metaLinea=[];
+  mesesInfo.forEach(m => {
+    let suma=0, cnt=0, sumaMeta=0;
+    for (let i=1; i<data.length; i++) {
+      const u = data[i][idxUser];
+      if (!u || u==="-") continue;
+      if (usuFiltro !== "TODOS" && u !== usuFiltro) continue;
+      const colC = m.colCump !== -1 ? m.colCump : m.colReal;
+      const vv   = Number(data[i][colC]);
+      const vm   = Number(data[i][m.colMeta]);
+      if (!isNaN(vv)) { suma += vv*100; cnt++; }
+      if (!isNaN(vm)) sumaMeta += vm*100;
+    }
+    etiq.push(m.etiqueta);
+    promedios.push(cnt > 0 ? parseFloat((suma/cnt).toFixed(2)) : null);
+    metaLinea.push(cnt > 0 ? parseFloat((sumaMeta/cnt).toFixed(2)) : null);
+  });
+
+  const ctx1 = document.getElementById("graficoTendenciaGeneral");
+  if (chartTendGen) chartTendGen.destroy();
+  chartTendGen = new Chart(ctx1, {
+    type: "line",
+    data: {
+      labels: etiq,
+      datasets: [
+        { label:"Cumplimiento promedio (%)", data:promedios, borderColor:"#1e88e5", backgroundColor:"rgba(30,136,229,0.12)", fill:true, tension:0.35, pointRadius:5, pointBackgroundColor:promedios.map(vv=>vv===null?null:vv>=100?"#2e7d32":vv>=90?"#e65100":"#c62828"), spanGaps:true },
+        { label:"Meta promedio (%)", data:metaLinea, borderColor:"#e53935", borderDash:[6,3], borderWidth:2, pointRadius:0, fill:false, spanGaps:true }
+      ]
+    },
+    options: { responsive:true, plugins:{ legend:{position:"top"}, tooltip:{callbacks:{label:c=>c.parsed.y?.toFixed(2)+" %"}} }, scales:{ y:{ ticks:{callback:vv=>vv+" %"}, grid:{color:"#f0f0f0"} } } }
+  });
+
+  // Barras por usuario
+  const usuMap={};
+  for (let i=1; i<data.length; i++) {
+    const u = data[i][idxUser];
+    if (!u || u==="-") continue;
+    const colC = mes.colCump !== -1 ? mes.colCump : mes.colReal;
+    const vv   = Number(data[i][colC]);
+    if (isNaN(vv)) continue;
+    if (!usuMap[u]) usuMap[u]={suma:0,cnt:0,sumP:0,cntP:0};
+    usuMap[u].suma += vv*100; usuMap[u].cnt++;
+    if (mesPrev) {
+      const colP = mesPrev.colCump !== -1 ? mesPrev.colCump : mesPrev.colReal;
+      const vP   = Number(data[i][colP]);
+      if (!isNaN(vP)) { usuMap[u].sumP += vP*100; usuMap[u].cntP++; }
+    }
+  }
+  const lblUsu  = Object.keys(usuMap);
+  const valAct  = lblUsu.map(u => parseFloat((usuMap[u].suma/usuMap[u].cnt).toFixed(2)));
+  const valPrev = mesPrev ? lblUsu.map(u => usuMap[u].cntP>0 ? parseFloat((usuMap[u].sumP/usuMap[u].cntP).toFixed(2)) : null) : [];
+
+  const ctx2 = document.getElementById("graficoBarraUsuarios");
+  if (chartBarra) chartBarra.destroy();
+  const ds2 = [{ label:"Cumplimiento "+mes.etiqueta+" (%)", data:valAct, backgroundColor:valAct.map(vv=>vv>=100?"#43a047":vv>=90?"#fb8c00":"#e53935"), borderRadius:6, barPercentage:0.55 }];
+  if (mesPrev && valPrev.length) ds2.push({ label:"Mes anterior: "+mesPrev.etiqueta+" (%)", data:valPrev, backgroundColor:"rgba(30,136,229,0.3)", borderColor:"#1e88e5", borderWidth:1.5, borderRadius:4, barPercentage:0.55 });
+  chartBarra = new Chart(ctx2, { type:"bar", data:{labels:lblUsu, datasets:ds2}, options:{ responsive:true, plugins:{legend:{position:"top"}, tooltip:{callbacks:{label:c=>c.parsed.y?.toFixed(2)+" %"}}}, scales:{y:{ticks:{callback:vv=>vv+" %"},grid:{color:"#f0f0f0"}}} } });
+
+  renderGraficoIndicador(data, mesesInfo);
+  renderTablaIndicador(data, mesesInfo);
+}
+
+// ── PESTAÑAS POR PERSONA ───────────────────────────────────
+function construirPestañasPersona(data, mesesInfo, usuarios) {
+  const cont = document.getElementById("personaTabs");
+  cont.innerHTML = "";
+  document.getElementById("personaContenido").innerHTML = "";
+  usuarios.forEach((u, i) => {
+    const btn = document.createElement("button");
+    btn.className = "persona-tab" + (i===0?" active":"");
+    btn.textContent = u;
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".persona-tab").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      mostrarPersona(data, mesesInfo, u);
+    });
+    cont.appendChild(btn);
+  });
+  if (usuarios.length > 0) mostrarPersona(data, mesesInfo, usuarios[0]);
+}
+
+function mostrarPersona(data, mesesInfo, usuario) {
+  const cont     = document.getElementById("personaContenido");
+  cont.innerHTML = "";
+  const headers  = data[0];
+  const idxUser  = headers.indexOf("USUARIO");
+  const idxNomb  = headers.findIndex(h => h && h.toString().includes("Nombre"));
+  const idxGrupo = headers.findIndex(h => h && h.toString().includes("GERENCIA"));
+  const filas    = data.slice(1).filter(r => r[idxUser] === usuario);
+  if (!filas.length) return;
+
+  const card = document.createElement("div");
+  card.className = "persona-card";
+  card.innerHTML = "<h3>👤 "+usuario+" — "+(filas[0][idxGrupo]||"")+"</h3>";
+
+  const tabla = document.createElement("table");
+  tabla.className = "mini-tabla";
+  const thead = document.createElement("thead");
+  const trH   = document.createElement("tr");
+  trH.innerHTML = "<th>Indicador</th>";
+  mesesInfo.forEach(m => trH.innerHTML += "<th>"+m.etiqueta+"</th>");
+  trH.innerHTML += "<th>Tendencia</th>";
+  thead.appendChild(trH); tabla.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  filas.forEach(fila => {
+    const tr   = document.createElement("tr");
+    const nomb = (fila[idxNomb]||"-").toString().trim();
+    tr.innerHTML = "<td style='text-align:left;font-weight:600;'>"+nomb+"</td>";
+    const vals = [];
+    mesesInfo.forEach(mes => {
+      const colC = mes.colCump !== -1 ? mes.colCump : mes.colReal;
+      const vv   = Number(fila[colC]);
+      if (!isNaN(vv)) {
+        const pct = vv*100; vals.push(pct);
+        const cls = pct>=100?"badge-verde":pct>=90?"badge-amarillo":"badge-rojo";
+        tr.innerHTML += "<td><span class='badge "+cls+"'>"+pct.toFixed(1)+"%</span></td>";
+      } else { vals.push(null); tr.innerHTML += "<td><span style='color:#bbb'>—</span></td>"; }
+    });
+    const vv2 = vals.filter(x=>x!==null);
+    let tend = "—";
+    if (vv2.length >= 2) {
+      const diff = vv2[vv2.length-1] - vv2[vv2.length-2];
+      if (diff > 0.5) tend = "<span class='variacion-up'>▲ "+diff.toFixed(1)+"%</span>";
+      else if (diff < -0.5) tend = "<span class='variacion-down'>▼ "+Math.abs(diff).toFixed(1)+"%</span>";
+      else tend = "<span class='variacion-eq'>= sin cambio</span>";
+    }
+    tr.innerHTML += "<td>"+tend+"</td>";
+    tbody.appendChild(tr);
+  });
+  tabla.appendChild(tbody);
+  card.appendChild(tabla);
+
+  const chartBox = document.createElement("div");
+  chartBox.className = "chart-box";
+  const canvas = document.createElement("canvas");
+  canvas.id = "cp_"+usuario.replace(/[^a-z0-9]/gi,"_");
+  chartBox.appendChild(canvas);
+  card.appendChild(chartBox);
+  cont.appendChild(card);
+
+  const colores = ["#1e88e5","#e53935","#43a047","#fb8c00","#8e24aa","#00897b","#f4511e"];
+  const datasets = filas.map((fila,i) => ({
+    label: (fila[idxNomb]||"-").toString().trim(),
+    data: mesesInfo.map(mes => { const colC=mes.colCump!==-1?mes.colCump:mes.colReal; const vv=Number(fila[colC]); return isNaN(vv)?null:parseFloat((vv*100).toFixed(2)); }),
+    borderColor: colores[i%colores.length], backgroundColor:"transparent", tension:0.3, pointRadius:4, borderWidth:2, spanGaps:true
+  }));
+
+  if (chartPersonaMap[usuario]) chartPersonaMap[usuario].destroy();
+  chartPersonaMap[usuario] = new Chart(document.getElementById(canvas.id), {
+    type:"line",
+    data:{ labels:mesesInfo.map(m=>m.etiqueta), datasets },
+    options:{ responsive:true, plugins:{ legend:{position:"right",labels:{font:{size:10}}}, tooltip:{callbacks:{label:c=>c.dataset.label+": "+c.parsed.y?.toFixed(2)+" %"}} }, scales:{y:{ticks:{callback:vv=>vv+" %"},grid:{color:"#f5f5f5"}}} }
+  });
+}
+
+// ── GRÁFICO POR INDICADOR ──────────────────────────────────
+function renderGraficoIndicador(data, mesesInfo) {
+  const nombreInd = document.getElementById("indicadorSeleccionado").value;
+  if (!nombreInd) return;
+  const headers  = data[0];
+  const idxNomb  = headers.findIndex(h => h && h.toString().includes("Nombre"));
+  const idxUser  = headers.indexOf("USUARIO");
+  const filas    = data.slice(1).filter(r => r[idxNomb] && r[idxNomb].toString().trim() === nombreInd);
+  if (!filas.length) return;
+
+  const colores = ["#1e88e5","#e53935","#43a047","#fb8c00","#8e24aa","#00897b"];
+  const datasets = filas.flatMap((fila,i) => {
+    const usu  = fila[idxUser]||("Fila "+(i+1));
+    const vals = mesesInfo.map(mes=>{ const colC=mes.colCump!==-1?mes.colCump:mes.colReal; const vv=Number(fila[colC]); return isNaN(vv)?null:parseFloat((vv*100).toFixed(2)); });
+    const meta = mesesInfo.map(mes=>{ const vm=Number(fila[mes.colMeta]); return isNaN(vm)?null:parseFloat((vm*100).toFixed(2)); });
+    const arr  = [{ label:usu, data:vals, borderColor:colores[i%colores.length], backgroundColor:colores[i%colores.length]+"22", fill:filas.length===1, tension:0.3, pointRadius:5, borderWidth:2, spanGaps:true }];
+    if (filas.length===1) arr.push({ label:"Meta", data:meta, borderColor:"#e53935", borderDash:[6,3], borderWidth:2, pointRadius:0, fill:false, spanGaps:true });
+    return arr;
+  });
+
+  const ctx = document.getElementById("graficoTendenciaIndicador");
+  if (chartInd) chartInd.destroy();
+  chartInd = new Chart(ctx, {
+    type:"line",
+    data:{ labels:mesesInfo.map(m=>m.etiqueta), datasets },
+    options:{ responsive:true, plugins:{ legend:{position:"top"}, title:{display:true,text:nombreInd,font:{size:13,weight:"bold"}}, tooltip:{callbacks:{label:c=>c.dataset.label+": "+c.parsed.y?.toFixed(2)+" %"}} }, scales:{y:{ticks:{callback:vv=>vv+" %"},grid:{color:"#f0f0f0"}}} }
+  });
+}
+
+// ── TABLA POR INDICADOR (mes vs mes-1) ─────────────────────
+function renderTablaIndicador(data, mesesInfo) {
+  const nombreInd = document.getElementById("indicadorSeleccionado").value;
+  if (!nombreInd) return;
+  const headers  = data[0];
+  const idxNomb  = headers.findIndex(h => h && h.toString().includes("Nombre"));
+  const idxUser  = headers.indexOf("USUARIO");
+  const filas    = data.slice(1).filter(r => r[idxNomb] && r[idxNomb].toString().trim() === nombreInd);
+  const cont     = document.getElementById("tablaIndicador");
+  cont.innerHTML = "";
+  if (!filas.length) return;
+
+  const tabla = document.createElement("table");
+  tabla.className = "mini-tabla";
+  const thead = document.createElement("thead");
+  const trH   = document.createElement("tr");
+  trH.innerHTML = "<th>Usuario</th>";
+  mesesInfo.forEach(m => { trH.innerHTML += "<th>"+m.etiqueta+"</th><th>vs ant.</th>"; });
+  thead.appendChild(trH); tabla.appendChild(thead);
+
+  const tbody = document.createElement("tbody");
+  filas.forEach(fila => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = "<td style='font-weight:700;'>"+(fila[idxUser]||"—")+"</td>";
+    let prev = null;
+    mesesInfo.forEach(mes => {
+      const colC = mes.colCump !== -1 ? mes.colCump : mes.colReal;
+      const vv   = Number(fila[colC]);
+      if (isNaN(vv)) { tr.innerHTML += "<td>—</td><td>—</td>"; prev=null; return; }
+      const pct = vv*100;
+      const cls = pct>=100?"badge-verde":pct>=90?"badge-amarillo":"badge-rojo";
+      tr.innerHTML += "<td><span class='badge "+cls+"'>"+pct.toFixed(1)+"%</span></td>";
+      if (prev !== null) {
+        const diff = pct - prev;
+        if (diff > 0.3)       tr.innerHTML += "<td class='variacion-up'>▲ "+diff.toFixed(1)+"%</td>";
+        else if (diff < -0.3) tr.innerHTML += "<td class='variacion-down'>▼ "+Math.abs(diff).toFixed(1)+"%</td>";
+        else                  tr.innerHTML += "<td class='variacion-eq'>=</td>";
+      } else tr.innerHTML += "<td>—</td>";
+      prev = pct;
+    });
+    tbody.appendChild(tr);
+  });
+  tabla.appendChild(tbody);
+  cont.appendChild(tabla);
+}
+
+// ── TABLA COMPLETA ─────────────────────────────────────────
+function construirTablaCompleta(data, mesesInfo) {
+  const table    = document.getElementById("tablaExcel");
+  table.innerHTML = "";
+  const headers  = data[0];
+  const colsVis  = headers.map((h,i)=>i).filter(i => headers[i]!==null && headers[i]!==undefined);
+  const colsTexto = [0,1,2,3,4,5,6];
+  data.forEach((row, ri) => {
+    const tr = document.createElement("tr");
+    colsVis.forEach(ci => {
+      const cell = row[ci];
+      const el   = document.createElement(ri===0?"th":"td");
+      if (ri===0) { el.textContent = cell ?? ""; }
+      else if (typeof cell === "number" && !colsTexto.includes(ci)) {
+        const pct = cell*100;
+        el.textContent = pct.toFixed(2)+" %";
+        el.className   = pct>=100?"celda-verde":pct>=90?"celda-amarillo":"celda-rojo";
+      } else { el.textContent = cell ?? ""; el.style.textAlign="left"; }
+      tr.appendChild(el);
+    });
+    table.appendChild(tr);
+  });
+}
+
+// ── NAVEGACIÓN TABS ────────────────────────────────────────
+document.querySelectorAll(".nav-tab").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".nav-tab").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("tab-"+btn.dataset.tab).classList.add("active");
+  });
+});
+</script>
 </body>
 </html>
